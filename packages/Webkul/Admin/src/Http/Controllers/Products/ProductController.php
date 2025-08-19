@@ -154,7 +154,7 @@ class ProductController extends Controller
         $products = $this->productRepository
             ->pushCriteria(app(RequestCriteria::class))
             ->orderBy('created_at', 'desc')
-            ->take(5)
+            ->take(20)
             ->get();
 
         return ProductResource::collection($products);
