@@ -27,5 +27,9 @@ class EventServiceProvider extends ServiceProvider
         'activity.update.after' => [
             'Webkul\Admin\Listeners\Activity@afterUpdateOrCreate',
         ],
+
+        'lead.closed.won' => [
+            'Webkul\Admin\Listeners\ConvertWonLeadToClient@handle',
+        ],
     ];
 }

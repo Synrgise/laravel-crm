@@ -204,6 +204,7 @@ return [
         Webkul\Admin\Providers\AdminServiceProvider::class,
         Webkul\Attribute\Providers\AttributeServiceProvider::class,
         Webkul\Automation\Providers\WorkflowServiceProvider::class,
+        Webkul\Client\Providers\ClientServiceProvider::class,
         Webkul\Contact\Providers\ContactServiceProvider::class,
         Webkul\Core\Providers\CoreServiceProvider::class,
         Webkul\DataGrid\Providers\DataGridServiceProvider::class,

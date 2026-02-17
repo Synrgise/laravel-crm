@@ -109,6 +109,12 @@ return [
         'sort'       => 6,
         'icon-class' => 'icon-contact',
     ], [
+        'key'        => 'clients',
+        'name'       => 'admin::app.layouts.clients',
+        'route'      => 'admin.clients.index',
+        'sort'       => 6,
+        'icon-class' => 'icon-organization',
+    ], [
         'key'        => 'contacts.persons',
         'name'       => 'admin::app.layouts.persons',
         'route'      => 'admin.contacts.persons.index',

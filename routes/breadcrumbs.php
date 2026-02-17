@@ -128,6 +128,30 @@ Breadcrumbs::for('contacts.organizations.edit', function (BreadcrumbTrail $trail
     $trail->push(trans('admin::app.contacts.organizations.edit.title'), route('admin.contacts.organizations.edit', $organization->id));
 });
 
+// Dashboard > Clients
+Breadcrumbs::for('clients', function (BreadcrumbTrail $trail) {
+    $trail->parent('dashboard');
+    $trail->push(trans('admin::app.layouts.clients'), route('admin.clients.index'));
+});
+
+// Dashboard > Clients > View
+Breadcrumbs::for('clients.view', function (BreadcrumbTrail $trail, $client) {
+    $trail->parent('clients');
+    $trail->push($client->organization->name ?? trans('admin::app.layouts.client'), route('admin.clients.view', $client->id));
+});
+
+// Dashboard > Clients > Edit
+Breadcrumbs::for('clients.edit', function (BreadcrumbTrail $trail, $client) {
+    $trail->parent('clients');
+    $trail->push(trans('admin::app.clients.edit.title'), route('admin.clients.edit', $client->id));
+});
+
+// Dashboard > Clients > Leads
+Breadcrumbs::for('clients.leads', function (BreadcrumbTrail $trail, $client) {
+    $trail->parent('clients');
+    $trail->push(trans('admin::app.clients.leads.breadcrumb'), route('admin.clients.leads.index', $client->id));
+});
+
 // Products
 Breadcrumbs::for('products', function (BreadcrumbTrail $trail) {
     $trail->parent('dashboard');

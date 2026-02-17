@@ -31,6 +31,11 @@ require 'products-routes.php';
 require 'contacts-routes.php';
 
 /**
+ * Clients routes.
+ */
+require 'clients-routes.php';
+
+/**
  * Activities routes.
  */
 require 'activities-routes.php';

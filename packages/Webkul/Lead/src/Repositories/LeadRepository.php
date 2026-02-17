@@ -5,6 +5,7 @@ namespace Webkul\Lead\Repositories;
 use Carbon\Carbon;
 use Illuminate\Container\Container;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Attribute\Repositories\AttributeValueRepository;
@@ -193,6 +194,13 @@ class LeadRepository extends Repository
         }
 
         $lead = parent::update($data, $id);
+
+        if (isset($data['lead_pipeline_stage_id'])) {
+            $stage = $this->stageRepository->find($data['lead_pipeline_stage_id']);
+            if ($stage && in_array($stage->code, ['won'], true)) {
+                Event::dispatch('lead.closed.won', [$lead]);
+            }
+        }
 
         /**
          * If attributes are provided, only save the provided attributes and return.

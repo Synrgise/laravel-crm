@@ -12,11 +12,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        $tableName = Schema::getConnection()->getTablePrefix() . 'attribute_values';
+
         Schema::table('attribute_values', function (Blueprint $table) {
             $table->string('unique_id')->nullable();
         });
 
-        DB::statement("UPDATE attribute_values SET unique_id = CONCAT(entity_id, '|', attribute_id)");
+        DB::statement("UPDATE {$tableName} SET unique_id = CONCAT(entity_id, '|', attribute_id)");
 
         Schema::table('attribute_values', function (Blueprint $table) {
             $table->unique('unique_id');
