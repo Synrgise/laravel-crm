@@ -101,12 +101,12 @@ class ClientDataGrid extends DataGrid
     public function prepareActions(): void
     {
         if (bouncer()->hasPermission('clients.view')) {
-            $this->addAction([
-                'icon'   => 'icon-eye',
-                'title'  => trans('admin::app.clients.index.datagrid.view'),
-                'method' => 'GET',
-                'url'    => fn ($row) => route('admin.clients.view', $row->id),
-            ]);
+            // $this->addAction([
+            //     'icon'   => 'icon-eye',
+            //     'title'  => trans('admin::app.clients.index.datagrid.view'),
+            //     'method' => 'GET',
+            //     'url'    => fn ($row) => route('admin.clients.view', $row->id),
+            // ]);
             $this->addAction([
                 'icon'   => 'icon-activity',
                 'title'  => trans('admin::app.clients.index.datagrid.view-sla'),

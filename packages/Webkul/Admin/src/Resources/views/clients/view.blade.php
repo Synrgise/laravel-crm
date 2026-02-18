@@ -164,27 +164,39 @@
                                 <th class="py-2 text-left font-medium">@lang('admin::app.clients.view.contract-type')</th>
                                 <th class="py-2 text-left font-medium">@lang('admin::app.clients.view.start-date')</th>
                                 <th class="py-2 text-left font-medium">@lang('admin::app.clients.view.end-date')</th>
-                                @if (bouncer()->hasPermission('clients.edit'))
-                                    <th></th>
-                                @endif
+                                <th class="py-2 text-left font-medium">@lang('admin::app.clients.view.actions')</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($client->contracts as $contract)
-                                <tr class="border-b border-gray-100 dark:border-gray-800">
+                                @php
+                                    $contractTypeLabel = $contract->type === 'agreement' ? __('admin::app.clients.contracts.type-agreement') : __('admin::app.clients.contracts.type-contract');
+                                    $documentUrl = $contract->document_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($contract->document_path) : '';
+                                @endphp
+                                <tr class="border-b border-gray-100 dark:border-gray-800"
+                                    data-contract-name="{{ e($contract->name) }}"
+                                    data-contract-type-label="{{ e($contractTypeLabel) }}"
+                                    data-start-date="{{ $contract->start_date?->format('M d, Y') ?? '' }}"
+                                    data-end-date="{{ $contract->end_date?->format('M d, Y') ?? '' }}"
+                                    data-notes="{{ e($contract->notes ?? '') }}"
+                                    data-document-url="{{ e($documentUrl) }}">
                                     <td class="py-2">{{ $contract->name }}</td>
-                                    <td class="py-2">{{ $contract->type === 'agreement' ? __('admin::app.clients.contracts.type-agreement') : __('admin::app.clients.contracts.type-contract') }}</td>
+                                    <td class="py-2">{{ $contractTypeLabel }}</td>
                                     <td class="py-2">{{ $contract->start_date?->format('M d, Y') ?? '—' }}</td>
                                     <td class="py-2">{{ $contract->end_date?->format('M d, Y') ?? '—' }}</td>
-                                    @if (bouncer()->hasPermission('clients.edit'))
-                                        <td class="py-2">
-                                            <form action="{{ route('admin.clients.contracts.destroy', [$client->id, $contract->id]) }}" method="POST" class="inline" onsubmit="return confirm('Delete this contract?');">
+                                    <td class="py-2">
+                                        <button type="button" class="contract-review-btn link-primary text-sm">
+                                            @lang('admin::app.clients.view.review-contract')
+                                        </button>
+                                        @if (bouncer()->hasPermission('clients.edit'))
+                                            <span class="text-gray-300 dark:text-gray-600">|</span>
+                                            <form action="{{ route('admin.clients.contracts.destroy', [$client->id, $contract->id]) }}" method="POST" class="inline" onsubmit="return confirm('@lang('admin::app.clients.view.delete-contract-confirm')');">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="text-red-600 hover:underline">@lang('admin::app.acl.delete')</button>
+                                                <button type="submit" class="text-red-600 hover:underline text-sm">@lang('admin::app.acl.delete')</button>
                                             </form>
-                                        </td>
-                                    @endif
+                                        @endif
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -194,13 +206,57 @@
         </div>
     </div>
 
+    {{-- Review Contract modal (visible to all) --}}
+    <div id="review-contract-modal" class="modal-container hidden">
+        <div class="modal-backdrop" data-toggle="modal" data-target="#review-contract-modal"></div>
+        <div class="modal-content max-w-md">
+            <h3 class="mb-4 text-lg font-semibold" id="review-contract-modal-title">@lang('admin::app.clients.view.review-contract')</h3>
+            <dl class="space-y-3 text-sm">
+                <div>
+                    <dt class="text-gray-500 dark:text-gray-400">@lang('admin::app.clients.view.contract-name')</dt>
+                    <dd class="font-medium mt-0.5" id="review-contract-name">—</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500 dark:text-gray-400">@lang('admin::app.clients.view.contract-type')</dt>
+                    <dd class="font-medium mt-0.5" id="review-contract-type">—</dd>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400">@lang('admin::app.clients.view.start-date')</dt>
+                        <dd class="font-medium mt-0.5" id="review-contract-start">—</dd>
+                    </div>
+                    <div>
+                        <dt class="text-gray-500 dark:text-gray-400">@lang('admin::app.clients.view.end-date')</dt>
+                        <dd class="font-medium mt-0.5" id="review-contract-end">—</dd>
+                    </div>
+                </div>
+                <div id="review-contract-notes-wrap">
+                    <dt class="text-gray-500 dark:text-gray-400">@lang('admin::app.clients.view.notes')</dt>
+                    <dd class="font-medium mt-0.5 whitespace-pre-wrap" id="review-contract-notes">—</dd>
+                </div>
+                <div id="review-contract-document-wrap" class="hidden">
+                    <dt class="text-gray-500 dark:text-gray-400">@lang('admin::app.clients.view.contract-document')</dt>
+                    <dd class="mt-1">
+                        <a href="#" id="review-contract-document-link" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-blue-600 hover:underline dark:text-blue-400">
+                            <span class="icon-download"></span>
+                            @lang('admin::app.clients.view.download-document')
+                        </a>
+                    </dd>
+                </div>
+            </dl>
+            <div class="mt-4 flex justify-end">
+                <button type="button" class="secondary-button" data-toggle="modal" data-target="#review-contract-modal">@lang('admin::app.clients.view.close')</button>
+            </div>
+        </div>
+    </div>
+
     @if (bouncer()->hasPermission('clients.edit'))
         {{-- Add Contract modal --}}
         <div id="add-contract-modal" class="modal-container hidden">
             <div class="modal-backdrop" data-toggle="modal" data-target="#add-contract-modal"></div>
             <div class="modal-content max-w-md">
                 <h3 class="mb-4 text-lg font-semibold">@lang('admin::app.clients.view.add-contract')</h3>
-                <form action="{{ route('admin.clients.contracts.store', $client->id) }}" method="POST">
+                <form action="{{ route('admin.clients.contracts.store', $client->id) }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     <div class="space-y-3">
                         <div>
@@ -223,6 +279,14 @@
                                 <label class="block text-sm font-medium">@lang('admin::app.clients.view.end-date')</label>
                                 <input type="date" name="end_date" value="{{ old('end_date') }}" class="mt-1 w-full rounded border border-gray-200 px-3 py-2 dark:border-gray-700 dark:bg-gray-900">
                             </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium">@lang('admin::app.clients.view.contract-document')</label>
+                            <input type="file" name="document" accept=".pdf,.doc,.docx,.txt" class="mt-1 w-full rounded border border-gray-200 px-3 py-2 dark:border-gray-700 dark:bg-gray-900">
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">@lang('admin::app.clients.view.contract-document-hint')</p>
+                            @error('document')
+                                <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium">@lang('admin::app.clients.view.notes')</label>
@@ -299,6 +363,41 @@
                     document.body.style.overflow = modal.classList.contains('hidden') ? '' : 'hidden';
                 }
                 document.addEventListener('click', handleModalToggle);
+
+                document.addEventListener('click', function(e) {
+                    var btn = e.target.closest('.contract-review-btn');
+                    if (!btn) return;
+                    e.preventDefault();
+                    var row = btn.closest('tr');
+                    if (!row) return;
+                    var name = row.getAttribute('data-contract-name') || '—';
+                    var typeLabel = row.getAttribute('data-contract-type-label') || '—';
+                    var start = row.getAttribute('data-start-date') || '—';
+                    var end = row.getAttribute('data-end-date') || '—';
+                    var notes = row.getAttribute('data-notes') || '—';
+                    var docUrl = row.getAttribute('data-document-url') || '';
+
+                    document.getElementById('review-contract-modal-title').textContent = name;
+                    document.getElementById('review-contract-name').textContent = name;
+                    document.getElementById('review-contract-type').textContent = typeLabel;
+                    document.getElementById('review-contract-start').textContent = start;
+                    document.getElementById('review-contract-end').textContent = end;
+                    document.getElementById('review-contract-notes').textContent = notes;
+
+                    var docWrap = document.getElementById('review-contract-document-wrap');
+                    var docLink = document.getElementById('review-contract-document-link');
+                    if (docUrl) {
+                        docWrap.classList.remove('hidden');
+                        docLink.href = docUrl;
+                    } else {
+                        docWrap.classList.add('hidden');
+                        docLink.href = '#';
+                    }
+
+                    var modal = document.getElementById('review-contract-modal');
+                    modal.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                });
             })();
         </script>
     @endpush
