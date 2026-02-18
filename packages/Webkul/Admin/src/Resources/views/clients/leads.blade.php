@@ -38,7 +38,7 @@
                                     <td class="py-2 font-medium">{{ $lead->title }}</td>
                                     <td class="py-2">{{ $lead->person->name ?? '—' }}</td>
                                     <td class="py-2">{{ $lead->stage->name ?? '—' }}</td>
-                                    <td class="py-2">{{ $lead->lead_value ? core()->formatPrice($lead->lead_value) : '—' }}</td>
+                                    <td class="py-2">{{ $lead->lead_value ? core()->formatBasePrice($lead->lead_value) : '—' }}</td>
                                     <td class="py-2">{{ $lead->created_at?->format('M d, Y') ?? '—' }}</td>
                                     <td class="py-2">
                                         <a href="{{ route('admin.leads.view', $lead->id) }}" class="link-primary text-sm">
