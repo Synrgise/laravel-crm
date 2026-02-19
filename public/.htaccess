@@ -1,3 +1,9 @@
+# Allow larger uploads (SLA & contract documents, max 10 MB in app)
+<IfModule mod_php.c>
+    php_value upload_max_filesize 20M
+    php_value post_max_size 20M
+</IfModule>
+
 # Rewrite Module
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
