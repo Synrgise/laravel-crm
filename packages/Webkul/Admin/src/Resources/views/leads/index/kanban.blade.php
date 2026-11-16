@@ -83,7 +83,6 @@
                             :list="stage.leads.data"
                             item-key="id"
                             group="leads"
-                            @scroll="handleScroll(stage, $event)"
                             @change="handleUpdate(stage, $event)"
                         >
                             <template #header>
@@ -132,11 +131,14 @@
                                     <!-- Header -->
                                     <div class="flex items-start justify-between">
                                         <div class="flex items-center gap-1">
-                                            <x-admin::avatar ::name="element.person.name" />
+                                            <x-admin::avatar
+                                                v-if="element.person?.name"
+                                                ::name="element.person.name"
+                                            />
 
                                             <div class="flex flex-col gap-0.5">
                                                 <span class="text-xs font-medium">
-                                                    @{{ element.person.name }}
+                                                    @{{ element.person?.name }}
                                                 </span>
 
                                                 <span class="text-[10px] leading-normal">
@@ -186,11 +188,17 @@
                                             @{{ element.formatted_lead_value }}
                                         </div>
 
-                                        <div class="rounded-xl bg-gray-200 px-2 py-1 text-xs font-medium dark:bg-gray-800 dark:text-white">
+                                        <div
+                                            class="rounded-xl bg-gray-200 px-2 py-1 text-xs font-medium dark:bg-gray-800 dark:text-white"
+                                            v-if="element.source?.name"
+                                        >
                                             @{{ element.source.name }}
                                         </div>
 
-                                        <div class="rounded-xl bg-gray-200 px-2 py-1 text-xs font-medium dark:bg-gray-800 dark:text-white">
+                                        <div
+                                            class="rounded-xl bg-gray-200 px-2 py-1 text-xs font-medium dark:bg-gray-800 dark:text-white"
+                                            v-if="element.type?.name"
+                                        >
                                             @{{ element.type.name }}
                                         </div>
 
@@ -214,6 +222,25 @@
                                 </a>
 
                                 {!! view_render_event('admin.leads.index.kanban.content.stage.body.card.after') !!}
+                            </template>
+
+                            <!-- See More -->
+                            <template #footer>
+                                <button
+                                    type="button"
+                                    class="secondary-button w-full shrink-0"
+                                    v-if="stage.leads.meta.has_more"
+                                    :disabled="loadingMore[stage.id]"
+                                    @click="loadMore(stage)"
+                                >
+                                    <template v-if="loadingMore[stage.id]">
+                                        @lang('admin::app.leads.index.kanban.loading')
+                                    </template>
+
+                                    <template v-else>
+                                        @lang('admin::app.leads.index.kanban.see-more')
+                                    </template>
+                                </button>
                             </template>
                         </draggable>
 
@@ -336,6 +363,8 @@
                     stages: @json($pipeline->stages->toArray()),
 
                     stageLeads: {},
+
+                    loadingMore: {},
 
                     isLoading: true,
 
@@ -509,16 +538,27 @@
                  * @returns {void}
                  */
                 append(params) {
-                    this.get(params)
+                    return this.get(params)
                         .then(response => {
+                            if (! response) {
+                                return;
+                            }
+
                             for (let [sortOrder, data] of Object.entries(response.data)) {
                                 if (! this.stageLeads[sortOrder]) {
                                     this.stageLeads[sortOrder] = data;
-                                } else {
-                                    this.stageLeads[sortOrder].leads.data = this.stageLeads[sortOrder].leads.data.concat(data.leads.data);
 
-                                    this.stageLeads[sortOrder].leads.meta = data.leads.meta;
+                                    continue;
                                 }
+
+                                const loaded = this.stageLeads[sortOrder].leads.data;
+
+                                // Skip cards already in the column, e.g. dragged in from another stage.
+                                const fresh = data.leads.data.filter(lead => ! loaded.some(item => item.id === lead.id));
+
+                                this.stageLeads[sortOrder].leads.data = loaded.concat(fresh);
+
+                                this.stageLeads[sortOrder].leads.meta = data.leads.meta;
                             }
                         });
                 },
@@ -655,29 +695,30 @@
                 },
 
                 /**
-                 * Handles the scroll event on the stage leads.
+                 * Loads the next 20 leads of a stage when "See more" is clicked.
                  *
                  * @param {object} stage - The stage object.
-                 * @param {object} event - The scroll event.
                  * @returns {void}
                  */
-                handleScroll(stage, event) {
-                    // Allow a small tolerance, scroll positions can be fractional on zoomed or high-DPI screens.
-                    const bottom = event.target.scrollHeight - event.target.scrollTop - event.target.clientHeight <= 5;
+                loadMore(stage) {
+                    const column = this.stageLeads[stage.sort_order];
 
-                    if (! bottom) {
+                    if (
+                        this.loadingMore[stage.id]
+                        || ! column?.leads.meta.has_more
+                    ) {
                         return;
                     }
 
-                    if (this.stageLeads[stage.sort_order].leads.meta.current_page == this.stageLeads[stage.sort_order].leads.meta.last_page) {
-                        return;
-                    }
+                    this.loadingMore[stage.id] = true;
 
                     this.append({
                         pipeline_stage_id: stage.id,
                         pipeline_id: stage.lead_pipeline_id,
-                        page: this.stageLeads[stage.sort_order].leads.meta.current_page + 1,
-                        limit: 10,
+                        after_id: column.leads.meta.next_cursor,
+                        limit: 20,
+                    }).finally(() => {
+                        this.loadingMore[stage.id] = false;
                     });
                 },
 

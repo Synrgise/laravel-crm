@@ -118,27 +118,46 @@ class LeadController extends Controller
 
             $data[$stage->sort_order] = (new StageResource($stage))->jsonSerialize();
 
+            $limit = max(1, min((int) request()->query('limit', 10), 100));
+
+            $total = (clone $query)->count();
+
+            /**
+             * Leads are ordered by id and "see more" continues after the last loaded id (cursor).
+             * A cursor, unlike a page number, stays correct when cards are dragged in or out of
+             * a column between loads.
+             */
+            $leadsQuery = (clone $query)->orderBy('leads.id');
+
+            if ($afterId = (int) request()->query('after_id')) {
+                $leadsQuery->where('leads.id', '>', $afterId);
+            }
+
+            $leads = $leadsQuery->with([
+                'tags',
+                'type',
+                'source',
+                'user',
+                'person',
+                'person.organization',
+                'pipeline',
+                'pipeline.stages',
+                'stage',
+                'attribute_values',
+            ])->limit($limit + 1)->get();
+
+            $hasMore = $leads->count() > $limit;
+
+            $leads = $leads->take($limit)->values();
+
             $data[$stage->sort_order]['leads'] = [
-                'data' => LeadResource::collection($paginator = $query->with([
-                    'tags',
-                    'type',
-                    'source',
-                    'user',
-                    'person',
-                    'person.organization',
-                    'pipeline',
-                    'pipeline.stages',
-                    'stage',
-                    'attribute_values',
-                ])->paginate(10)),
+                'data' => LeadResource::collection($leads),
 
                 'meta' => [
-                    'current_page' => $paginator->currentPage(),
-                    'from'         => $paginator->firstItem(),
-                    'last_page'    => $paginator->lastPage(),
-                    'per_page'     => $paginator->perPage(),
-                    'to'           => $paginator->lastItem(),
-                    'total'        => $paginator->total(),
+                    'per_page'    => $limit,
+                    'total'       => $total,
+                    'next_cursor' => $leads->last()?->id,
+                    'has_more'    => $hasMore,
                 ],
             ];
         }

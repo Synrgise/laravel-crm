@@ -168,3 +168,62 @@ it('renders the lead create and quote create pages with the product lookup', fun
         ->get(route('admin.quotes.create'))
         ->assertOk();
 });
+
+it('loads kanban leads in batches using a cursor until there is nothing left', function () {
+    $pipeline = createTargetPipeline();
+    $stage = $pipeline->stages()->first();
+
+    foreach (range(1, 45) as $i) {
+        createLeadInDefaultPipeline([
+            'lead_pipeline_id'       => $pipeline->id,
+            'lead_pipeline_stage_id' => $stage->id,
+        ]);
+    }
+
+    $fetch = fn (array $query) => test()->actingAs(getDefaultAdmin(), 'user')
+        ->getJson(route('admin.leads.get').'?'.http_build_query(array_merge([
+            'pipeline_id'       => $pipeline->id,
+            'pipeline_stage_id' => $stage->id,
+        ], $query)))
+        ->assertOk()
+        ->json($stage->sort_order.'.leads');
+
+    $first = $fetch(['limit' => 10]);
+
+    expect($first['data'])->toHaveCount(10)
+        ->and($first['meta']['total'])->toBe(45)
+        ->and($first['meta']['has_more'])->toBeTrue();
+
+    $second = $fetch(['limit' => 20, 'after_id' => $first['meta']['next_cursor']]);
+
+    expect($second['data'])->toHaveCount(20)
+        ->and($second['meta']['has_more'])->toBeTrue();
+
+    $third = $fetch(['limit' => 20, 'after_id' => $second['meta']['next_cursor']]);
+
+    expect($third['data'])->toHaveCount(15)
+        ->and($third['meta']['has_more'])->toBeFalse();
+
+    $ids = collect([$first, $second, $third])->flatMap(fn ($page) => collect($page['data'])->pluck('id'));
+
+    expect($ids->unique())->toHaveCount(45);
+});
+
+it('returns leads without a contact person, source or type so the kanban can still render them', function () {
+    $pipeline = createTargetPipeline();
+    $stage = $pipeline->stages()->first();
+
+    createLeadInDefaultPipeline([
+        'lead_pipeline_id'       => $pipeline->id,
+        'lead_pipeline_stage_id' => $stage->id,
+    ]);
+
+    $lead = test()->actingAs(getDefaultAdmin(), 'user')
+        ->getJson(route('admin.leads.get').'?pipeline_id='.$pipeline->id)
+        ->assertOk()
+        ->json($stage->sort_order.'.leads.data.0');
+
+    expect($lead['person'])->toBeNull()
+        ->and($lead['source'])->toBeNull()
+        ->and($lead['type'])->toBeNull();
+});

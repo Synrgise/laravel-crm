@@ -2044,6 +2044,8 @@ return [
                 'empty-list'             => 'Your Leads List is Empty',
                 'empty-list-description' => 'Create a lead to organize your goals.',
                 'create-lead-btn'        => 'Create Lead',
+                'see-more'               => 'See more',
+                'loading'                => 'Loading...',
 
                 'columns' => [
                     'contact-person'      => 'Contact Person',
