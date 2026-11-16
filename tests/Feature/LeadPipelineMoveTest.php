@@ -136,3 +136,35 @@ it('returns the pipeline id on stages so the kanban can load more leads', functi
         expect($stage['lead_pipeline_id'])->toBe($pipeline->id);
     }
 });
+
+it('finds older products through the product lookup search', function () {
+    DB::table('products')->insert([
+        'name' => 'Base System Setup', 'sku' => 'BSS-1', 'price' => 10, 'quantity' => 1,
+        'created_at' => now()->subYear(), 'updated_at' => now()->subYear(),
+    ]);
+
+    foreach (range(1, 25) as $i) {
+        DB::table('products')->insert([
+            'name' => 'Newer product '.$i, 'sku' => 'NEW-'.$i, 'price' => 10, 'quantity' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    $names = collect(test()->actingAs(getDefaultAdmin(), 'user')
+        ->getJson(route('admin.products.search', ['query' => 'base system']))
+        ->assertOk()
+        ->json('data'))->pluck('name');
+
+    expect($names->all())->toBe(['Base System Setup']);
+});
+
+it('renders the lead create and quote create pages with the product lookup', function () {
+    test()->actingAs(getDefaultAdmin(), 'user')
+        ->get(route('admin.leads.create'))
+        ->assertOk()
+        ->assertSee('min-chars', false);
+
+    test()->actingAs(getDefaultAdmin(), 'user')
+        ->get(route('admin.quotes.create'))
+        ->assertOk();
+});

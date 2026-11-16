@@ -60,12 +60,11 @@
                 <div class="relative flex items-center">
                     <input
                         type="text"
-                        v-model.lazy="searchTerm"
-                        v-debounce="500"
+                        v-model="searchTerm"
+                        v-debounce="250"
                         class="w-full rounded border border-gray-200 px-2.5 py-2 text-sm font-normal text-gray-800 transition-all hover:border-gray-400 focus:border-gray-400 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-400 dark:focus:border-gray-400"
                         placeholder="@lang('admin::app.components.lookup.search')"
                         ref="searchInput"
-                        @keyup="search"
                     />
 
                     <!-- Search Icon (absolute positioned) -->
@@ -156,6 +155,11 @@
                     default: false,
                 },
 
+                minChars: {
+                    type: Number,
+                    default: 3,
+                },
+
                 preload: {
                     type: Boolean,
                     default: false,
@@ -185,7 +189,8 @@
                     this.selectedItem = this.value;
                 }
 
-                this.search(this.preload);
+                // Preloaded results are fetched the first time the popup is opened, not on mount,
+                // so pages with many lookups (one per product row) don't fire a request each.
             },
 
             created() {
@@ -209,8 +214,10 @@
                  * @return {Array}
                  */
                 filteredResults() {
+                    const term = this.searchTerm.toLowerCase();
+
                     return this.searchedResults.filter(item =>
-                        item.name.toLowerCase().includes(this.searchTerm.toLowerCase())
+                        `${item.name ?? ''} ${item.sku ?? ''}`.toLowerCase().includes(term)
                     );
                 }
             },
@@ -225,6 +232,14 @@
                     this.showPopup = ! this.showPopup;
 
                     if (this.showPopup) {
+                        if (
+                            this.preload
+                            && ! this.searchedResults.length
+                            && ! this.searchTerm.length
+                        ) {
+                            this.search(true);
+                        }
+
                         this.$nextTick(() => this.$refs.searchInput.focus());
                     }
                 },
@@ -254,7 +269,7 @@
                 search(preload = false) {
                     if (
                         ! preload
-                        && this.searchTerm.length <= 2
+                        && this.searchTerm.length < this.minChars
                     ) {
                         this.searchedResults = [];
 

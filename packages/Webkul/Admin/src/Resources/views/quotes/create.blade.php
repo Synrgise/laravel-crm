@@ -440,6 +440,7 @@
                             ::src="src"
                             ::name="`${inputName}[product_id]`"
                             :preload="true"
+                            :min-chars="1"
                             :placeholder="trans('admin::app.quotes.create.search-products')"
                             @on-selected="(product) => addProduct(product)"
                         />

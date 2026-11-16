@@ -151,8 +151,25 @@ class ProductController extends Controller
      */
     public function search(): JsonResource
     {
+        /**
+         * The lookup component sends the typed text as `query`. Apply it on the server,
+         * otherwise only the newest 20 products are ever returned and older products
+         * can never be found or linked to a lead or quote.
+         */
+        $term = trim((string) request()->input('query'));
+
         $products = $this->productRepository
             ->pushCriteria(app(RequestCriteria::class))
+            ->scopeQuery(function ($query) use ($term) {
+                if ($term === '') {
+                    return $query;
+                }
+
+                return $query->where(function ($query) use ($term) {
+                    $query->where('name', 'like', '%'.$term.'%')
+                        ->orWhere('sku', 'like', '%'.$term.'%');
+                });
+            })
             ->orderBy('created_at', 'desc')
             ->take(20)
             ->get();

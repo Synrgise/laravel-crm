@@ -662,7 +662,8 @@
                  * @returns {void}
                  */
                 handleScroll(stage, event) {
-                    const bottom = event.target.scrollHeight - event.target.scrollTop === event.target.clientHeight;
+                    // Allow a small tolerance, scroll positions can be fractional on zoomed or high-DPI screens.
+                    const bottom = event.target.scrollHeight - event.target.scrollTop - event.target.clientHeight <= 5;
 
                     if (! bottom) {
                         return;
