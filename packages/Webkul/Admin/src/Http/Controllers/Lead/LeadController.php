@@ -94,6 +94,8 @@ class LeadController extends Controller
             $stages = $pipeline->stages;
         }
 
+        $data = [];
+
         foreach ($stages as $stage) {
             /**
              * We have to create a new instance of the lead repository every time, which is
@@ -229,7 +231,9 @@ class LeadController extends Controller
             return redirect()->route('admin.leads.index');
         }
 
-        return view('admin::leads.view', compact('lead'));
+        $pipelines = $this->pipelineRepository->with('stages')->get();
+
+        return view('admin::leads.view', compact('lead', 'pipelines'));
     }
 
     /**
@@ -330,6 +334,61 @@ class LeadController extends Controller
 
         return response()->json([
             'message' => trans('admin::app.leads.update-success'),
+        ]);
+    }
+
+    /**
+     * Move the lead to another pipeline (and stage).
+     */
+    public function updatePipeline(int $id)
+    {
+        $this->validate(request(), [
+            'lead_pipeline_id'       => 'required|exists:lead_pipelines,id',
+            'lead_pipeline_stage_id' => 'nullable|exists:lead_pipeline_stages,id',
+        ]);
+
+        $lead = $this->leadRepository->findOrFail($id);
+
+        $userIds = bouncer()->getAuthorizedUserIds();
+
+        if ($userIds && ! in_array($lead->user_id, $userIds)) {
+            abort(403);
+        }
+
+        $pipeline = $this->pipelineRepository->findOrFail(request()->input('lead_pipeline_id'));
+
+        if (request()->filled('lead_pipeline_stage_id')) {
+            $stage = $pipeline->stages()
+                ->where('id', request()->input('lead_pipeline_stage_id'))
+                ->first();
+        } else {
+            $stage = $pipeline->stages()->first();
+        }
+
+        if (! $stage) {
+            return response()->json([
+                'message' => trans('admin::app.leads.view.move-pipeline.invalid-stage'),
+            ], 422);
+        }
+
+        if ($lead->lead_pipeline_id == $pipeline->id) {
+            return response()->json([
+                'message' => trans('admin::app.leads.view.move-pipeline.same-pipeline'),
+            ], 422);
+        }
+
+        Event::dispatch('lead.update.before', $id);
+
+        $lead = $this->leadRepository->update([
+            'entity_type'            => 'leads',
+            'lead_pipeline_id'       => $pipeline->id,
+            'lead_pipeline_stage_id' => $stage->id,
+        ], $id, ['lead_pipeline_stage_id']);
+
+        Event::dispatch('lead.update.after', $lead);
+
+        return response()->json([
+            'message' => trans('admin::app.leads.view.move-pipeline.success'),
         ]);
     }
 

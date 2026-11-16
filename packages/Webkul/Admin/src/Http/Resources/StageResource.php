@@ -16,6 +16,7 @@ class StageResource extends JsonResource
     {
         return [
             'id'                   => $this->id,
+            'lead_pipeline_id'     => $this->lead_pipeline_id,
             'code'                 => $this->code,
             'name'                 => $this->name,
             'lead_value'           => $this->lead_value,

@@ -2202,6 +2202,17 @@ return [
                 'save-btn'       => 'Save',
             ],
 
+            'move-pipeline' => [
+                'btn'            => 'Move Pipeline',
+                'title'          => 'Move Lead to Another Pipeline',
+                'pipeline'       => 'Pipeline',
+                'stage'          => 'Stage',
+                'save-btn'       => 'Move Lead',
+                'success'        => 'Lead moved to the new pipeline successfully.',
+                'same-pipeline'  => 'The lead is already in this pipeline.',
+                'invalid-stage'  => 'The selected stage does not belong to the selected pipeline.',
+            ],
+
             'tags' => [
                 'create-success'  => 'Tag created successfully.',
                 'destroy-success' => 'Tag deleted successfully.',

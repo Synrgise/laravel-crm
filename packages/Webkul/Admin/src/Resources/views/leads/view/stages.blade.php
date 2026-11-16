@@ -85,6 +85,77 @@
 
             {!! view_render_event('admin.leads.view.stages.items.dropdown.after', ['lead' => $lead]) !!}
 
+            @if (bouncer()->hasPermission('leads.edit') && $pipelines->count() > 1)
+                <!-- Move To Another Pipeline -->
+                <button
+                    type="button"
+                    class="secondary-button ml-2 h-7 whitespace-nowrap"
+                    @click="openPipelineModal"
+                >
+                    @lang('admin::app.leads.view.move-pipeline.btn')
+                </button>
+
+                <x-admin::modal ref="pipelineModal">
+                    <x-slot:header>
+                        <h3 class="text-base font-semibold dark:text-white">
+                            @lang('admin::app.leads.view.move-pipeline.title')
+                        </h3>
+                    </x-slot>
+
+                    <x-slot:content>
+                        <div class="mb-4">
+                            <label class="mb-1.5 flex items-center gap-1 text-xs font-medium text-gray-800 dark:text-white">
+                                @lang('admin::app.leads.view.move-pipeline.pipeline')
+                            </label>
+
+                            <select
+                                class="custom-select w-full rounded-md border bg-white px-3 py-2.5 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
+                                v-model="targetPipelineId"
+                                @change="onPipelineChange"
+                            >
+                                <option
+                                    v-for="pipeline in availablePipelines"
+                                    :key="pipeline.id"
+                                    :value="pipeline.id"
+                                >
+                                    @{{ pipeline.name }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="mb-1.5 flex items-center gap-1 text-xs font-medium text-gray-800 dark:text-white">
+                                @lang('admin::app.leads.view.move-pipeline.stage')
+                            </label>
+
+                            <select
+                                class="custom-select w-full rounded-md border bg-white px-3 py-2.5 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
+                                v-model="targetStageId"
+                            >
+                                <option
+                                    v-for="stage in targetStages"
+                                    :key="stage.id"
+                                    :value="stage.id"
+                                >
+                                    @{{ stage.name }}
+                                </option>
+                            </select>
+                        </div>
+                    </x-slot>
+
+                    <x-slot:footer>
+                        <button
+                            type="button"
+                            class="primary-button"
+                            :disabled="isMoving || ! targetStageId"
+                            @click="movePipeline"
+                        >
+                            @lang('admin::app.leads.view.move-pipeline.save-btn')
+                        </button>
+                    </x-slot>
+                </x-admin::modal>
+            @endif
+
             {!! view_render_event('admin.leads.view.stages.form_controls.before', ['lead' => $lead]) !!}
 
             <x-admin::form
@@ -196,10 +267,64 @@
                     stages: @json($lead->pipeline->stages),
 
                     stageToggler: '',
+
+                    pipelines: @json($pipelines),
+
+                    currentPipelineId: {{ $lead->lead_pipeline_id }},
+
+                    targetPipelineId: null,
+
+                    targetStageId: null,
+
+                    isMoving: false,
                 }
             },
 
+            computed: {
+                availablePipelines() {
+                    return this.pipelines.filter(pipeline => pipeline.id != this.currentPipelineId);
+                },
+
+                targetStages() {
+                    const pipeline = this.pipelines.find(pipeline => pipeline.id == this.targetPipelineId);
+
+                    return pipeline ? pipeline.stages.filter(stage => ! ['won', 'lost'].includes(stage.code)) : [];
+                },
+            },
+
             methods: {
+                openPipelineModal() {
+                    this.targetPipelineId = this.availablePipelines[0]?.id ?? null;
+
+                    this.onPipelineChange();
+
+                    this.$refs.pipelineModal.open();
+                },
+
+                onPipelineChange() {
+                    this.targetStageId = this.targetStages[0]?.id ?? null;
+                },
+
+                movePipeline() {
+                    this.isMoving = true;
+
+                    this.$axios
+                        .put("{{ route('admin.leads.pipeline.update', $lead->id) }}", {
+                            lead_pipeline_id: this.targetPipelineId,
+                            lead_pipeline_stage_id: this.targetStageId,
+                        })
+                        .then((response) => {
+                            this.$emitter.emit('add-flash', { type: 'success', message: response.data.message });
+
+                            window.location.reload();
+                        })
+                        .catch((error) => {
+                            this.isMoving = false;
+
+                            this.$emitter.emit('add-flash', { type: 'error', message: error.response?.data?.message ?? 'Error' });
+                        });
+                },
+
                 openModal(stage) {
                     if (this.currentStage.code == stage.code) {
                         return;
