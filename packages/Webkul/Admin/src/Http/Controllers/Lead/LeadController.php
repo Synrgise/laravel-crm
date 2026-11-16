@@ -17,6 +17,7 @@ use Webkul\Admin\Http\Requests\MassDestroyRequest;
 use Webkul\Admin\Http\Requests\MassUpdateRequest;
 use Webkul\Admin\Http\Resources\LeadResource;
 use Webkul\Admin\Http\Resources\StageResource;
+use Webkul\Activity\Repositories\ActivityRepository;
 use Webkul\Attribute\Repositories\AttributeRepository;
 use Webkul\Contact\Repositories\PersonRepository;
 use Webkul\Lead\Helpers\MagicAI;
@@ -51,7 +52,8 @@ class LeadController extends Controller
         protected StageRepository $stageRepository,
         protected LeadRepository $leadRepository,
         protected ProductRepository $productRepository,
-        protected PersonRepository $personRepository
+        protected PersonRepository $personRepository,
+        protected ActivityRepository $activityRepository
     ) {
         request()->request->add(['entity_type' => 'leads']);
     }
@@ -377,6 +379,10 @@ class LeadController extends Controller
             ], 422);
         }
 
+        $oldPipelineName = $lead->pipeline?->name;
+
+        $oldStageName = $lead->stage?->name;
+
         Event::dispatch('lead.update.before', $id);
 
         $lead = $this->leadRepository->update([
@@ -385,10 +391,32 @@ class LeadController extends Controller
             'lead_pipeline_stage_id' => $stage->id,
         ], $id, ['lead_pipeline_stage_id']);
 
+        $note = $this->activityRepository->create([
+            'type'    => 'note',
+            'comment' => trans('admin::app.leads.view.move-pipeline.note', [
+                'old_pipeline' => $oldPipelineName,
+                'old_stage'    => $oldStageName,
+                'new_pipeline' => $pipeline->name,
+                'new_stage'    => $stage->name,
+            ]),
+            'is_done' => 1,
+            'user_id' => auth()->guard('user')->id(),
+        ]);
+
+        $lead->activities()->attach($note->id);
+
         Event::dispatch('lead.update.after', $lead);
 
+        $message = trans('admin::app.leads.view.move-pipeline.success');
+
+        /**
+         * The page reloads after the move, so flash the message to the session
+         * to make sure the success toast is displayed after the reload.
+         */
+        session()->flash('success', $message);
+
         return response()->json([
-            'message' => trans('admin::app.leads.view.move-pipeline.success'),
+            'message' => $message,
         ]);
     }
 

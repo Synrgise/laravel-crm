@@ -2209,6 +2209,7 @@ return [
                 'stage'          => 'Stage',
                 'save-btn'       => 'Move Lead',
                 'success'        => 'Lead moved to the new pipeline successfully.',
+                'note'           => 'Moved from :old_pipeline (:old_stage) to :new_pipeline (:new_stage).',
                 'same-pipeline'  => 'The lead is already in this pipeline.',
                 'invalid-stage'  => 'The selected stage does not belong to the selected pipeline.',
             ],

@@ -314,8 +314,7 @@
                             lead_pipeline_stage_id: this.targetStageId,
                         })
                         .then((response) => {
-                            this.$emitter.emit('add-flash', { type: 'success', message: response.data.message });
-
+                            // The success message is flashed by the server and shown after reload.
                             window.location.reload();
                         })
                         .catch((error) => {
